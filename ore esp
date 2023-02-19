@@ -1,0 +1,72 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local oreFolder  = game:GetService("Workspace")["WORKSPACE_Interactables"].Mining.OreDeposits
+local get_children = game.GetChildren
+local find_first_child = game.FindFirstChild
+local new_drawing = Drawing.new;
+local camera = workspace.CurrentCamera;
+local wtvp = camera.WorldToViewportPoint;
+
+local oresNames = {}
+local ore_ID = {}
+local eps =  {}
+
+for _, value in pairs(get_children(oreFolder)) do
+	table.insert(oresNames, value.Name)
+end
+
+
+local function Setup()
+	for _, oreName in pairs(oresNames) do
+		for _, ore in pairs(get_children(find_first_child(oreFolder,oreName))) do
+			local id = ore:GetDebugId()
+			if not table.find(ore_ID,id) then 
+				table.insert(ore_ID,id)
+				eps[id] = {['oreInstance'] = ore; ["esp"] = new_drawing("Text", true);}
+				eps[id].esp.Center = true
+				eps[id].esp.Outline = true
+
+				eps[id].esp.Font = 3
+				eps[id].esp.Size = 14
+			end
+		end
+	end
+end
+
+
+Setup()
+
+
+if shared.ore_esp == nil then
+	shared.Distance = 4000
+	shared.ore_esp = true
+end
+
+RunService.Heartbeat:Connect(function()
+	task.wait(0.02)
+	for _, value in pairs(eps) do
+		if shared.ore_esp and find_first_child(value.oreInstance,tostring(value.oreInstance.Parent.Name..'Ore')) and value.oreInstance.DepositInfo.OreRemaining.Value > 0 then
+			local name = value.oreInstance.Parent.Name..'Ore'
+			local vec3Pos = find_first_child(value.oreInstance,name).Position
+			local pos, visible = wtvp(camera, vec3Pos)
+			local dis = Players.LocalPlayer:DistanceFromCharacter(vec3Pos)
+			if visible and math.round(dis) <= shared.Distance then
+				value.esp.Position = Vector2.new(pos.X,pos.Y);
+				value.esp.Color = find_first_child(value.oreInstance,name).Color
+				value.esp.Text = value.oreInstance.Parent.Name..'['..math.round(dis)..']'
+				value.esp.Size = math.clamp(30 - dis / 10, 15, 30)
+				value.esp.Visible = true
+			else
+				value.esp.Visible = false
+			end
+		else
+			value.esp.Visible = false
+		end
+
+	end
+end)
+
+
+oreFolder.DescendantAdded:Connect(function()
+	Setup()
+end)
